@@ -1,0 +1,169 @@
+#include "main.h"
+#include "pros/distance.hpp"
+#include "pros/motors.hpp"
+#include "pros/imu.hpp"
+#include "pros/motor_group.hpp"
+#include "pros/rotation.hpp"
+
+//motor groups
+pros::MotorGroup left_mg({1, -2});
+pros::MotorGroup right_mg({-3, 4});
+pros::MotorGroup lift_mg({6, -7});
+
+//motors
+pros::Motor intake(5);
+pros::Motor claw(8);
+pros::Motor claw_rotator(9);
+
+//sensors
+pros::IMU imu(10);
+pros::Rotation horizontal_odometry(11);
+pros::Rotation vertical_odometry(12);
+pros::Distance north_distance_sensor(13);
+pros::Distance south_distance_sensor(14);
+pros::Distance east_distance_sensor(15);
+pros::Distance west_distance_sensor(16);
+
+//pneumatics
+//no pneumatics on the robot 
+
+/**
+ * A callback function for LLEMU's center button.
+ *
+ * When this callback is fired, it will toggle line 2 of the LCD text between
+ * "I was pressed!" and nothing.
+ */
+void on_center_button() {
+	static bool pressed = false;
+	pressed = !pressed;
+	if (pressed) {
+		pros::lcd::set_text(2, "I was pressed!");
+	} else {
+		pros::lcd::clear_line(2);
+	}
+}
+
+/**
+ * Runs initialization code. This occurs as soon as the program is started.
+ *
+ * All other competition modes are blocked by initialize; it is recommended
+ * to keep execution time for this mode under a few seconds.
+ */
+void initialize() {
+	pros::lcd::initialize();
+	pros::lcd::set_text(1, "Hello PROS User!");
+
+	pros::lcd::register_btn1_cb(on_center_button);
+}
+
+/**
+ * Runs while the robot is in the disabled state of Field Management System or
+ * the VEX Competition Switch, following either autonomous or opcontrol. When
+ * the robot is enabled, this task will exit.
+ */
+void disabled() {}
+
+/**
+ * Runs after initialize(), and before autonomous when connected to the Field
+ * Management System or the VEX Competition Switch. This is intended for
+ * competition-specific initialization routines, such as an autonomous selector
+ * on the LCD.
+ *
+ * This task will exit when the robot is enabled and autonomous or opcontrol
+ * starts.
+ */
+void competition_initialize() {}
+
+/**
+ * Runs the user autonomous code. This function will be started in its own task
+ * with the default priority and stack size whenever the robot is enabled via
+ * the Field Management System or the VEX Competition Switch in the autonomous
+ * mode. Alternatively, this function may be called in initialize or opcontrol
+ * for non-competition testing purposes.
+ *
+ * If the robot is disabled or communications is lost, the autonomous task
+ * will be stopped. Re-enabling the robot will restart the task, not re-start it
+ * from where it left off.
+ */
+void autonomous() {}
+
+/**
+ * Runs the operator control code. This function will be started in its own task
+ * with the default priority and stack size whenever the robot is enabled via
+ * the Field Management System or the VEX Competition Switch in the operator
+ * control mode.
+ *
+ * If no competition control is connected, this function will run immediately
+ * following initialize().
+ *
+ * If the robot is disabled or communications is lost, the
+ * operator control task will be stopped. Re-enabling the robot will restart the
+ * task, not resume it from where it left off.
+ */
+void opcontrol() {
+	pros::Controller master(pros::E_CONTROLLER_MASTER);
+	pros::MotorGroup left_mg({1, -2, 3});    // Creates a motor group with forwards ports 1 & 3 and reversed port 2
+	pros::MotorGroup right_mg({-4, 5, -6});  // Creates a motor group with forwards port 5 and reversed ports 4 & 6
+
+
+	while (true) {
+		pros::lcd::print(0, "%d %d %d", (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
+		                 (pros::lcd::read_buttons() & LCD_BTN_CENTER) >> 1,
+		                 (pros::lcd::read_buttons() & LCD_BTN_RIGHT) >> 0);  // Prints status of the emulated screen LCDs
+
+		// Arcade control scheme
+		
+		int dir = master.get_analog(ANALOG_LEFT_Y);    // Gets amount forward/backward from left joystick
+		int turn = master.get_analog(ANALOG_RIGHT_X);  // Gets the turn left/right from right joystick
+		left_mg.move(dir - turn);                      // Sets left motor voltage
+		right_mg.move(dir + turn);                     // Sets right motor voltage
+		
+		//intake functions
+		
+		if(master.get_digital(DIGITAL_L1)) {  // If L1 is pressed
+			intake.move(127);
+			claw.move(127);                 // Intake motor moves forward at full speed
+		} else if(master.get_digital(DIGITAL_L2)) {  // If L2 is pressed
+			intake.move(-127);
+			claw.move(-127);                // Intake motor moves backward at full speed
+		} else {
+			intake.move(0);
+			claw.move(0);                   // Intake motor stops moving
+		}
+		
+		//scoring funcitions
+		
+		if(master.get_digital(DIGITAL_Y)) {  // If Y is pressed
+			claw.move(-127);    
+			claw_rotator.move_absolute(45, 127);         // Lift motor group moves forward at full speed    
+		} else {
+			claw.move(0);  
+			claw_rotator.move_absolute(0, 127);             // Lift motor group stops moving
+		}
+		
+		//claw functions
+		
+		bool claw_rotation_state = false;  // Variable to track the state of the claw rotation
+		if(master.get_digital_new_press(DIGITAL_X)) {  // If X is newly pressed
+			if(claw_rotation_state==false) {  // If the claw is not rotated
+				claw_rotator.move_absolute(90, 127);  // Rotate the claw to 90 degrees at full speed
+				claw_rotation_state = true;            // Update the state to indicate the claw is rotated
+			} else {  // If the claw is already rotated
+				claw_rotator.move_absolute(0, 127);   // Rotate the claw back to 0 degrees at full speed
+				claw_rotation_state = false;           // Update the state to indicate the claw is not rotated
+			}
+		}
+
+		// Lift functions
+		
+		if(master.get_digital(DIGITAL_R1)) {
+			lift_mg.move(127);  // Lift motor moves forward at full speed
+		} else if(master.get_digital(DIGITAL_R2)) {
+			lift_mg.move(-127);  // Lift motor moves backward at full speed
+		} else {
+			lift_mg.move(0);  // Lift motor stops moving
+		}
+
+		pros::delay(20);                               // Run for 20 ms then update
+	}
+}
