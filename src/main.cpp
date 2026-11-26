@@ -7,6 +7,7 @@
 #include "TitanReset/TRConstants.hpp"
 #include "lemlib/chassis/chassis.hpp"
 #include "titanselect/titanselect.hpp"
+#include "TitanSelect.cpp"
 
 // controller
 pros::Controller controller(pros::E_CONTROLLER_MASTER);
