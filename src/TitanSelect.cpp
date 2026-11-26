@@ -1,26 +1,37 @@
+#include "main.h"
 #include "titanselect/titanselect.hpp"
 
-// Global selector object pointer
-ts::selector* selector = ts::selector::get();
-
-void left_auton() {
-    // Left-side autonomous routine
+void red_left_auton()
+{
+	//Some super cool auton code.
 }
 
-void right_auton() {
-    // Right-side autonomous routine
+void blue_right_auton()
+{
+    //Some super cool auton code.
 }
 
-// Register autonomous routines
-ts::auton left("Left", left_auton);
-ts::auton right("Right", right_auton);
+void blue_left_auton()
+{
+    //Some super cool auton code.
+}
 
+void red_right_auton()
+{
+    //Some super cool auton code.
+}
+
+ts::auton rl("Red Left", red_left_auton);
+ts::auton br("Blue Right", blue_right_auton);
+ts::auton rr("Red Right", red_right_auton);
+ts::auton bl("Blue Left", blue_left_auton);
+
+/**
+ * Runs initialization code. This occurs as soon as the program is started.
+ *
+ * All other competition modes are blocked by initialize; it is recommended
+ * to keep execution time for this mode under a few seconds.
+ */
 void autonomous() {
-    // Run the currently selected auton
-	selector->run_selected_auton();
-}
-
-void initialize() {
-    // Display selector
-    selector->display();
+	ts::selector::get()->run_selected_auton();
 }

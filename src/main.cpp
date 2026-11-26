@@ -6,7 +6,7 @@
 #include "TitanReset/TRTypes.hpp"
 #include "TitanReset/TRConstants.hpp"
 #include "lemlib/chassis/chassis.hpp"
-
+#include "titanselect/titanselect.hpp"
 
 // controller
 pros::Controller controller(pros::E_CONTROLLER_MASTER);
@@ -16,12 +16,12 @@ pros::Controller controller(pros::E_CONTROLLER_MASTER);
 pros::MotorGroup leftMotors({-5, 4},
                             pros::MotorGearset::blue); // left motor group - ports 3 (reversed), 4, 
 pros::MotorGroup rightMotors({6, -9}, pros::MotorGearset::blue); // right motor group - ports 6, 7, 
-pros::MotorGroup lift_mg({6, -7}, pros::MotorGearset::blue); // lift motor group - ports 6, 7
+pros::MotorGroup lift_mg({1, -2}, pros::MotorGearset::blue); // lift motor group - ports 6, 7
 
 // individual motors
-pros::Motor intake(5, pros::MotorGearset::blue);
+pros::Motor intake(3, pros::MotorGearset::blue);
 pros::Motor claw(8, pros::MotorGearset::green);
-pros::Motor claw_rotator(9, pros::MotorGearset::green);
+pros::Motor claw_rotator(12, pros::MotorGearset::green);
 
 // DSR Titan Reset Lib Sensors
 /**
@@ -140,7 +140,24 @@ lemlib::ExpoDriveCurve steerCurve(3, // joystick deadband out of 127
 // create the chassis
 lemlib::Chassis chassis(drivetrain, linearController, angularController, sensors, &throttleCurve, &steerCurve);
 
+// Global LVGL label
+lv_obj_t* poseLabel = nullptr;
 
+// Function to update coordinates
+void updateCoordinates(lv_timer_t* timer) {
+
+    // Get current LemLib position
+    auto pose = chassis.getPose();
+
+    // Update the LVGL label
+    lv_label_set_text_fmt(
+        poseLabel,
+        "X: %.2f | Y: %.2f | Theta: %.2f",
+        pose.x,
+        pose.y,
+        pose.theta
+    );
+}
 
 /**
  * Runs initialization code. This occurs as soon as the program is started.
@@ -148,32 +165,31 @@ lemlib::Chassis chassis(drivetrain, linearController, angularController, sensors
  * All other competition modes are blocked by initialize; it is recommended
  * to keep execution time for this mode under a few seconds.
  */
+
+
 void initialize() {
-    pros::lcd::initialize(); // initialize brain screen
-    chassis.calibrate(); // calibrate sensors
+    // Calibrate LemLib
+    chassis.calibrate();
 
-    // the default rate is 50. however, if you need to change the rate, you
-    // can do the following.
-    // lemlib::bufferedStdout().setRate(...);
-    // If you use bluetooth or a wired connection, you will want to have a rate of 10ms
+    // Display TitanSelect
+    ts::selector::get()->display();
 
-    // for more information on how the formatting for the loggers
-    // works, refer to the fmtlib docs
+    // Create coordinate label
+    poseLabel = lv_label_create(lv_screen_active());
 
-    // thread to for brain screen and position logging
-    pros::Task screenTask([&]() {
-        while (true) {
-            // print robot location to the brain screen
-            pros::lcd::print(0, "X: %f", chassis.getPose().x); // x
-            pros::lcd::print(1, "Y: %f", chassis.getPose().y); // y
-            pros::lcd::print(2, "Theta: %f", chassis.getPose().theta); // heading
-            // log position telemetry
-            lemlib::telemetrySink()->info("Chassis pose: {}", chassis.getPose());
-            // delay to save resources
-            pros::delay(50);
-        }
-    });
+    lv_obj_align(poseLabel, LV_ALIGN_BOTTOM_MID, 0, -8);
+    lv_obj_set_style_text_color(poseLabel, lv_color_white(), 0);
+
+    lv_label_set_text(
+        poseLabel,
+        "X: 0.00 | Y: 0.00 | Theta: 0.00"
+    );
+
+    // Update coordinates every 50ms
+    lv_timer_create(updateCoordinates, 50, nullptr);
 }
+
+
 
 /**
  * Runs while the robot is disabled
@@ -195,6 +211,7 @@ ASSET(example_txt); // '.' replaced with "_" to make c++ happy
  * Runs in driver control
  */
 void opcontrol() {
+    bool claw_rotation_state = false;  // Variable to track the state of the claw rotation
     // controller
 	pros::Controller controller(pros::E_CONTROLLER_MASTER);
     // loop to continuously update motors
@@ -229,7 +246,6 @@ void opcontrol() {
 		
 		//claw functions
 		
-		bool claw_rotation_state = false;  // Variable to track the state of the claw rotation
 		if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_X)) {  // If X is newly pressed
 			if(claw_rotation_state==false) {  // If the claw is not rotated
 				claw_rotator.move_absolute(90, 127);  // Rotate the claw to 90 degrees at full speed
