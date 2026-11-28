@@ -224,10 +224,10 @@ void opcontrol() {
         chassis.arcade(leftY, rightX);
 			//intake functions
 		
-		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1)) {  // If L1 is pressed
+		if(controller.get_digital(DIGITAL_L1)) {  // If L1 is pressed
 			intake.move(127);
 			claw.move(127);                 // Intake motor moves forward at full speed
-		} else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2)) {  // If L2 is pressed
+		} else if(controller.get_digital(DIGITAL_L2)) {  // If L2 is pressed
 			intake.move(-127);
 			claw.move(-127);                // Intake motor moves backward at full speed
 		} else {
@@ -237,7 +237,7 @@ void opcontrol() {
 		
 		//scoring funcitions
 		
-		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {  // If Y is pressed
+		if(controller.get_digital(DIGITAL_Y)) {  // If Y is pressed
 			claw.move(-127);    
 			claw_rotator.move_absolute(45, 127);         // Lift motor group moves forward at full speed    
 		} else {
@@ -247,7 +247,7 @@ void opcontrol() {
 		
 		//claw functions
 		
-		if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_X)) {  // If X is newly pressed
+		if(controller.get_digital_new_press(DIGITAL_X)) {  // If X is newly pressed
 			if(claw_rotation_state==false) {  // If the claw is not rotated
 				claw_rotator.move_absolute(90, 127);  // Rotate the claw to 90 degrees at full speed
 				claw_rotation_state = true;            // Update the state to indicate the claw is rotated
@@ -259,9 +259,9 @@ void opcontrol() {
 
 		// Lift functions
 		
-		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
+		if(controller.get_digital(DIGITAL_R1)) {
 			lift_mg.move(127);  // Lift motor moves forward at full speed
-		} else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)) {
+		} else if(controller.get_digital(DIGITAL_R2)) {
 			lift_mg.move(-127);  // Lift motor moves backward at full speed
 		} else {
 			lift_mg.move(0);  // Lift motor stops moving
